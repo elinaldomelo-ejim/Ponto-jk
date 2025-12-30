@@ -1,0 +1,7 @@
+{
+  "name": "PontoFlow - Sistema de Registro de Ponto",
+  "description": "Sistema completo para registro de ponto de funcionários com controle de banco de horas, anexos, relatórios detalhados e suporte a PWA.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

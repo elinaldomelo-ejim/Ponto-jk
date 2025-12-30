@@ -1,0 +1,16 @@
+
+{
+  "name": "PontoFlow",
+  "short_name": "PontoFlow",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2991/2991231.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
