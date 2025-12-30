@@ -1,201 +1,214 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, DayRecord, PunchType, PunchRecord } from './types';
+import { User, DayRecord, PunchType, PunchRecord, SystemSettings } from './types';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
 import Users from './components/Users';
+import Settings from './components/Settings';
 import { LogIn, Lock, Mail, Clock } from 'lucide-react';
 import { format } from 'date-fns';
+import { dbService } from './lib/supabase';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports' | 'users'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'reports' | 'users' | 'settings'>('dashboard');
   const [records, setRecords] = useState<DayRecord[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(true);
+  
+  const [settings, setSettings] = useState<SystemSettings>({
+    systemName: 'PontoFlow',
+    institutionName: 'Minha Empresa S.A.',
+    slogan: 'Gestão Inteligente de Frequência',
+    logoUrl: '',
+    faviconUrl: ''
+  });
 
-  // Load users from LocalStorage on mount
+  // Inicialização Completa
   useEffect(() => {
-    const savedUsers = localStorage.getItem('pontoflow_users');
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      const initialUsers: User[] = [
-        { id: 'admin-1', name: 'Administrador', email: 'admin@ponto.flow', role: 'ADMIN', shift: 'Geral', workPeriod: 'Manhã', password: 'admin' },
-        { id: 'user-1', name: 'João Silva (Turno 01)', email: 'joao@empresa.com', role: 'EMPLOYEE', shift: 'Turno 01', workPeriod: 'Manhã', password: '123' },
-        { id: 'user-2', name: 'Maria Souza (Turno 02)', email: 'maria@empresa.com', role: 'EMPLOYEE', shift: 'Turno 02', workPeriod: 'Tarde', password: '123' },
-        { id: 'user-3', name: 'Carlos Santos (Turno 03)', email: 'carlos@empresa.com', role: 'EMPLOYEE', shift: 'Turno 03', workPeriod: 'Noite', password: '123' }
-      ];
-      setUsers(initialUsers);
-      localStorage.setItem('pontoflow_users', JSON.stringify(initialUsers));
-    }
+    const initApp = async () => {
+      setLoading(true);
+      try {
+        const cloudSettings = await dbService.getSettings();
+        if (cloudSettings) setSettings(cloudSettings);
 
-    const savedUser = localStorage.getItem('pontoflow_user');
-    if (savedUser) setUser(JSON.parse(savedUser));
+        const cloudUsers = await dbService.getUsers();
+        setUsers(cloudUsers);
+
+        const savedUser = localStorage.getItem('pontoflow_user');
+        if (savedUser) {
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+          const cloudRecords = await dbService.getRecords(parsedUser.id);
+          setRecords(cloudRecords);
+        }
+      } catch (err) {
+        console.error("Falha na conexão com Supabase:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    initApp();
   }, []);
 
-  // Load records whenever they change or user changes
   useEffect(() => {
-    const savedRecords = localStorage.getItem('pontoflow_records');
-    if (savedRecords) {
-      const parsed = JSON.parse(savedRecords);
-      const restored = parsed.map((r: any) => ({
-        ...r,
-        punches: r.punches.map((p: any) => ({ ...p, timestamp: new Date(p.timestamp) }))
-      }));
-      setRecords(restored);
+    if (settings.faviconUrl) {
+      let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement;
+      if (!link) {
+        link = document.createElement('link');
+        link.rel = 'icon';
+        document.getElementsByTagName('head')[0].appendChild(link);
+      }
+      link.href = settings.faviconUrl;
     }
-  }, [user]);
+    localStorage.setItem('pontoflow_settings', JSON.stringify(settings));
+    document.title = settings.systemName;
+  }, [settings]);
 
-  // Save all records whenever they change
-  useEffect(() => {
-    if (records.length > 0) {
-      localStorage.setItem('pontoflow_records', JSON.stringify(records));
-    }
-  }, [records]);
-
-  // Save users whenever they change
-  useEffect(() => {
-    if (users.length > 0) {
-      localStorage.setItem('pontoflow_users', JSON.stringify(users));
-    }
-  }, [users]);
-
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const foundUser = users.find(u => u.email === email && (u.password === password));
-    
+    const form = e.target as HTMLFormElement;
+    const emailInput = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const passwordInput = (form.elements.namedItem('password') as HTMLInputElement).value;
+
+    const foundUser = users.find(u => u.email === emailInput && u.password === passwordInput);
     if (foundUser) {
       setUser(foundUser);
       localStorage.setItem('pontoflow_user', JSON.stringify(foundUser));
+      setLoading(true);
+      const userRecords = await dbService.getRecords(foundUser.id);
+      setRecords(userRecords);
+      setLoading(false);
     } else {
-      alert('Credenciais inválidas.');
+      alert('Usuário ou senha inválidos.');
     }
   };
 
   const handleLogout = () => {
     setUser(null);
+    setRecords([]);
     localStorage.removeItem('pontoflow_user');
     setActiveTab('dashboard');
   };
 
-  const addPunch = (type: PunchType, attachment?: string, manualTimestamp?: Date, observation?: string) => {
+  const addPunch = async (type: PunchType, attachment?: string, timestamp?: Date, observation?: string, punchId?: string) => {
     if (!user) return;
-    const punchDate = manualTimestamp || new Date();
+    const punchDate = timestamp || new Date();
     const dateStr = format(punchDate, 'yyyy-MM-dd');
     
-    const newPunch: PunchRecord = {
-      id: Math.random().toString(36).substr(2, 9),
-      timestamp: punchDate,
-      type,
-      attachment,
-      observation
-    };
-
     setRecords(prev => {
-      const existing = prev.find(r => r.date === dateStr && r.userId === user.id);
-      if (existing) {
-        return prev.map(r => (r.date === dateStr && r.userId === user.id) ? { ...r, punches: [...r.punches, newPunch] } : r);
+      const existingRecord = prev.find(r => r.date === dateStr && r.userId === user.id);
+      let updatedRecord: DayRecord;
+      
+      const newPunch: PunchRecord = {
+        id: punchId || Math.random().toString(36).substr(2, 9),
+        timestamp: punchDate,
+        type,
+        attachment,
+        observation
+      };
+
+      if (existingRecord) {
+        let updatedPunches;
+        if (punchId) {
+          // Editando um existente (mantém a posição original se quiser, ou apenas substitui)
+          updatedPunches = existingRecord.punches.map(p => p.id === punchId ? newPunch : p);
+        } else {
+          // Novo punch para o mesmo dia (remove duplicatas do mesmo tipo se houver)
+          updatedPunches = [...existingRecord.punches.filter(p => p.type !== type), newPunch];
+        }
+        updatedRecord = { ...existingRecord, punches: updatedPunches };
       } else {
-        return [...prev, { userId: user.id, date: dateStr, punches: [newPunch] }];
+        updatedRecord = { userId: user.id, date: dateStr, punches: [newPunch] };
       }
+      
+      const newRecords = prev.some(r => r.date === dateStr && r.userId === user.id)
+        ? prev.map(r => (r.date === dateStr && r.userId === user.id) ? updatedRecord : r)
+        : [...prev, updatedRecord];
+
+      // Salva no Supabase
+      dbService.saveRecord(updatedRecord);
+      return newRecords;
     });
   };
 
-  const handleAddUser = (userData: Omit<User, 'id'>) => {
-    const newUser: User = {
-      ...userData,
-      id: Math.random().toString(36).substr(2, 9)
-    };
-    setUsers(prev => [...prev, newUser]);
+  const handleAddUser = async (u: Omit<User, 'id'>) => {
+    const newUser = { ...u, id: Math.random().toString(36).substr(2, 9) } as User;
+    await dbService.saveUser(newUser);
+    const updatedUsers = await dbService.getUsers();
+    setUsers(updatedUsers);
   };
 
-  const handleDeleteUser = (id: string) => {
-    if (id === 'admin-1') return alert('Não é possível remover o administrador principal.');
-    if (confirm('Deseja realmente remover este funcionário?')) {
-      setUsers(prev => prev.filter(u => u.id !== id));
+  const handleDeleteUser = async (id: string) => {
+    if (confirm('Deseja realmente excluir este funcionário?')) {
+      await dbService.deleteUser(id);
+      setUsers(users.filter(u => u.id !== id));
     }
   };
 
-  const userRecords = records.filter(r => r.userId === user?.id);
+  const handleSaveSettings = async (newSettings: SystemSettings) => {
+    setSettings(newSettings);
+    await dbService.saveSettings(newSettings);
+  };
+
+  if (loading && !user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center">
+        <div className="w-16 h-16 border-8 border-blue-600 border-t-transparent rounded-full animate-spin mb-6 shadow-2xl"></div>
+        <p className="text-slate-500 font-black uppercase tracking-[0.4em] text-[10px]">PontoFlow Sincronizando...</p>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-slate-100">
-          <div className="flex flex-col items-center mb-8">
-            <div className="bg-blue-600 p-4 rounded-2xl text-white mb-4 shadow-lg">
-              <Clock className="w-10 h-10" />
-            </div>
-            <h1 className="text-3xl font-black text-blue-600 tracking-tighter">PontoFlow</h1>
-            <p className="text-slate-500 font-medium text-center">Controle de Frequência e Banco de Horas</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white p-12 rounded-[3.5rem] shadow-2xl w-full max-w-md border border-slate-100">
+          <div className="flex flex-col items-center mb-12 text-center">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Logo" className="w-24 h-24 object-contain mb-6" />
+            ) : (
+              <div className="bg-blue-600 p-6 rounded-[2rem] text-white mb-6 shadow-2xl shadow-blue-100 ring-8 ring-blue-50">
+                <Clock className="w-14 h-14" />
+              </div>
+            )}
+            <h1 className="text-5xl font-black text-blue-600 tracking-tighter mb-2">{settings.systemName}</h1>
+            <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">
+              {settings.institutionName}
+            </p>
           </div>
 
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">E-mail</label>
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">E-mail</label>
               <div className="relative">
-                <Mail className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-10 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                  required
-                />
+                <Mail className="w-6 h-6 absolute left-4 top-4 text-slate-300" />
+                <input name="email" type="email" className="w-full bg-slate-50 border border-slate-200 rounded-3xl px-14 py-4 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700" required />
               </div>
             </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1">Senha</label>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Senha</label>
               <div className="relative">
-                <Lock className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-10 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                  required
-                />
+                <Lock className="w-6 h-6 absolute left-4 top-4 text-slate-300" />
+                <input name="password" type="password" className="w-full bg-slate-50 border border-slate-200 rounded-3xl px-14 py-4 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-700" required />
               </div>
             </div>
-
-            <button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
-            >
-              <LogIn className="w-5 h-5" />
-              Acessar Sistema
+            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-6 rounded-[2rem] shadow-2xl shadow-blue-200 transition-all uppercase tracking-[0.2em] text-xs active:scale-95">
+              Entrar no Sistema
             </button>
           </form>
-
-          <div className="mt-8 pt-6 border-t border-slate-100 text-slate-400 text-xs text-center space-y-1">
-            <p className="font-bold text-slate-500 mb-2 uppercase tracking-widest">Acessos Rápidos (Teste)</p>
-            <p>Admin: admin@ponto.flow / admin</p>
-            <p>Turno 01: joao@empresa.com / 123</p>
-            <p>Turno 02: maria@empresa.com / 123</p>
-            <p>Turno 03: carlos@empresa.com / 123</p>
-          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <Layout user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab}>
-      {activeTab === 'dashboard' && (
-        <Dashboard records={userRecords} onAddPunch={addPunch} user={user} />
-      )}
-      {activeTab === 'reports' && (
-        <Reports user={user} records={userRecords} />
-      )}
-      {activeTab === 'users' && user.role === 'ADMIN' && (
-        <Users users={users} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} />
-      )}
+    <Layout user={user} onLogout={handleLogout} activeTab={activeTab} setActiveTab={setActiveTab} settings={settings}>
+      {activeTab === 'dashboard' && <Dashboard records={records} onAddPunch={addPunch} user={user} />}
+      {activeTab === 'reports' && <Reports user={user} records={records} settings={settings} />}
+      {activeTab === 'users' && user.role === 'ADMIN' && <Users users={users} onAddUser={handleAddUser} onDeleteUser={handleDeleteUser} />}
+      {activeTab === 'settings' && user.role === 'ADMIN' && <Settings settings={settings} onSave={handleSaveSettings} />}
     </Layout>
   );
 };

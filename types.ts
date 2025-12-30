@@ -5,13 +5,13 @@ export interface PunchRecord {
   id: string;
   timestamp: Date;
   type: PunchType;
-  attachment?: string; // Base64 or URL
-  observation?: string; // Manual notes from the employee
+  attachment?: string;
+  observation?: string;
 }
 
 export interface DayRecord {
-  userId: string; // ID of the employee
-  date: string; // ISO string (YYYY-MM-DD)
+  userId: string;
+  date: string;
   punches: PunchRecord[];
 }
 
@@ -24,14 +24,17 @@ export interface User {
   password?: string;
   birthDate?: string;
   role: 'EMPLOYEE' | 'ADMIN';
-  shift: string; // The specific shift label
+  shift: string;
   workPeriod?: WorkPeriod;
+  sector?: string; // Novo campo de setor
 }
 
-export interface BalanceSummary {
-  totalWorkedSeconds: number;
-  totalTargetSeconds: number;
-  balanceSeconds: number;
+export interface SystemSettings {
+  systemName: string;
+  institutionName: string;
+  slogan: string;
+  logoUrl: string;
+  faviconUrl: string;
 }
 
 export enum ReportPeriod {

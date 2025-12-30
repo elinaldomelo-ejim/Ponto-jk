@@ -1,16 +1,27 @@
 
 {
-  "name": "PontoFlow",
+  "name": "PontoFlow Enterprise",
   "short_name": "PontoFlow",
   "start_url": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f8fafc",
   "theme_color": "#2563eb",
+  "categories": ["business", "productivity"],
+  "description": "Sistema Inteligente de Frequência e Gestão de Horas",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/2991/2991231.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "url": "/",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2991/2991231.png", "sizes": "512x512" }]
     }
   ]
 }

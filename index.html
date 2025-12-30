@@ -3,26 +3,44 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Folha de Ponto</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>PontoFlow - Sistema de Ponto</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#2563eb">
+    
+    <!-- iOS Support -->
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="PontoFlow">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2991/2991231.png">
+    
     <style>
+        :root {
+            --sat: env(safe-area-inset-top);
+            --sar: env(safe-area-inset-right);
+            --sab: env(safe-area-inset-bottom);
+            --sal: env(safe-area-inset-left);
+        }
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             body { background: white !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @page { 
-              margin: 0.5cm; 
-              size: auto;
-            }
-            .break-inside-avoid { break-inside: avoid; }
-            .print-shadow-none { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+            @page { margin: 1cm; size: auto; }
+            .page-break-before { page-break-before: always; }
+            .avoid-break { page-break-inside: avoid; }
         }
         .print-only { display: none; }
+        .pb-safe { padding-bottom: var(--sab); }
+        .pt-safe { padding-top: var(--sat); }
+        
+        /* Animação suave para modais */
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
     </style>
 <script type="importmap">
 {
@@ -37,7 +55,7 @@
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900 font-sans">
+<body class="bg-slate-50 text-slate-900 font-sans selection:bg-blue-100 overflow-x-hidden">
     <div id="root"></div>
 </body>
 </html>

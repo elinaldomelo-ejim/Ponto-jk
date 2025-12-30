@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, UserPlus, X, Trash2, Mail, Lock, Calendar, Clock, Briefcase } from 'lucide-react';
+import { Plus, UserPlus, X, Trash2, Mail, Lock, Calendar, Clock, Briefcase, Building2 } from 'lucide-react';
 import { User, WorkPeriod } from '../types';
 
 interface UsersProps {
@@ -16,7 +16,8 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
     birthDate: '',
     email: '',
     password: '',
-    workPeriod: 'Manhã' as WorkPeriod
+    workPeriod: 'Manhã' as WorkPeriod,
+    sector: ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,7 +27,7 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
       role: 'EMPLOYEE',
       shift: formData.workPeriod === 'Manhã' ? 'Turno 01' : formData.workPeriod === 'Tarde' ? 'Turno 02' : 'Turno 03'
     });
-    setFormData({ name: '', birthDate: '', email: '', password: '', workPeriod: 'Manhã' });
+    setFormData({ name: '', birthDate: '', email: '', password: '', workPeriod: 'Manhã', sector: '' });
     setIsModalOpen(false);
   };
 
@@ -53,8 +54,8 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
             <thead>
               <tr className="bg-slate-50">
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Funcionário</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Setor / Período</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Login/Email</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100">Período</th>
                 <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider border-b border-slate-100 text-right">Ações</th>
               </tr>
             </thead>
@@ -72,15 +73,18 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-slate-600">{u.email}</td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      u.workPeriod === 'Manhã' ? 'bg-green-100 text-green-700' :
-                      u.workPeriod === 'Tarde' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'
-                    }`}>
-                      {u.workPeriod || u.shift}
-                    </span>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-black text-slate-500 uppercase tracking-tighter">{u.sector || 'Geral'}</span>
+                      <span className={`w-fit px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        u.workPeriod === 'Manhã' ? 'bg-green-100 text-green-700' :
+                        u.workPeriod === 'Tarde' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'
+                      }`}>
+                        {u.workPeriod || u.shift}
+                      </span>
+                    </div>
                   </td>
+                  <td className="px-6 py-4 text-sm text-slate-600 font-medium">{u.email}</td>
                   <td className="px-6 py-4 text-right">
                     <button
                       onClick={() => onDeleteUser(u.id)}
@@ -91,13 +95,6 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                    Nenhum usuário cadastrado.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -129,6 +126,21 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="Ex: João Silva"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-10 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Setor / Departamento</label>
+                  <div className="relative">
+                    <Building2 className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      required
+                      value={formData.sector}
+                      onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                      placeholder="Ex: Recursos Humanos"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-10 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     />
                   </div>
@@ -180,7 +192,7 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
                 </div>
 
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">Senha</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Senha de Acesso</label>
                   <div className="relative">
                     <Lock className="w-5 h-5 absolute left-3 top-3 text-slate-400" />
                     <input
@@ -207,7 +219,7 @@ const Users: React.FC<UsersProps> = ({ users, onAddUser, onDeleteUser }) => {
                   type="submit"
                   className="flex-1 px-6 py-4 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-100 transition-all"
                 >
-                  Salvar Usuário
+                  Confirmar Cadastro
                 </button>
               </div>
             </form>
